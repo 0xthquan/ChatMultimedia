@@ -1,5 +1,6 @@
 package server;
 
+import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -8,6 +9,7 @@ import java.io.ObjectOutputStream;
 import java.net.Socket;
 
 import javax.net.ssl.SSLEngineResult.Status;
+import javax.swing.plaf.metal.MetalIconFactory.FolderIcon16;
 
 import client.Command;
 import client.Data;
@@ -57,11 +59,11 @@ public class ClientConnect extends Thread {
 			break;
 		case Command.SEND_FILE:
 			String fileName = data.fileName;
-			byte[] buffer = data.fileContent;
+			byte[] fileContent = data.fileContent;
 			FileOutputStream fileOut;
 			try {
 				fileOut = new FileOutputStream(server.folderStoreFilePath + "\\" + fileName);
-				fileOut.write(buffer);
+				fileOut.write(fileContent);
 				fileOut.close();
 			} catch (IOException e) {
 				// TODO Auto-generated catch block
@@ -72,7 +74,9 @@ public class ClientConnect extends Thread {
 			
 			break;
 		case Command.GET_FILE:
-			
+			fileName = data.fileName;
+			fileContent = server.getByteFile(new File(server.folderStoreFilePath + "\\" + fileName));
+			server.getFile(new Data(Command.GET_FILE, fileName, fileContent), this.user);	
 			break;
 		case Command.PRIVATE_CHAT:
 
@@ -163,4 +167,6 @@ public class ClientConnect extends Thread {
 		String name = server.getAllName();
 		sendData(new Data(Command.LIST_USER, name));
 	}
+	
+	
 }

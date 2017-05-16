@@ -5,6 +5,7 @@ import java.awt.event.ActionListener;
 import java.io.DataInputStream;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
@@ -15,6 +16,7 @@ import javax.swing.JList;
 import javax.swing.JTextField;
 import javax.swing.JTextPane;
 import javax.swing.event.HyperlinkEvent;
+import javax.swing.event.HyperlinkListener;
 import javax.swing.text.BadLocationException;
 import javax.swing.text.html.HTMLDocument;
 
@@ -49,8 +51,9 @@ public class Client extends JFrame implements ActionListener {
 	private ObjectInputStream fromServer;
 	private DataStream dataStream;
 	private String selectedUser;
-	
+
 	PrivateClient pClient;
+	JFileChooser fileChooser;
 
 	/**
 	 * Launch the application.
@@ -163,11 +166,16 @@ public class Client extends JFrame implements ActionListener {
 		msgArea.setBounds(26, 62, 384, 225);
 		msgArea.setEditable(false);
 		frame2.getContentPane().add(msgArea);
-		msgArea.setContentType("text/html");
-		
-		msgArea.addHyperlinkListener((HyperlinkEvent event) -> {
-			if (event.getEventType() == HyperlinkEvent.EventType.ACTIVATED) {
-				System.out.println("Click and clik");
+		// msgArea.setContentType("text/html");
+		msgArea.setEditorKit(JEditorPane.createEditorKitForContentType("text/html"));
+
+		msgArea.addHyperlinkListener(new HyperlinkListener() {
+			@Override
+			public void hyperlinkUpdate(HyperlinkEvent e) {
+				if (e.getEventType() == HyperlinkEvent.EventType.ACTIVATED) {
+					String fileName = e.getURL().toString().substring(7);
+					getFilefromServer(fileName);
+				}
 			}
 		});
 
@@ -246,8 +254,35 @@ public class Client extends JFrame implements ActionListener {
 			break;
 		case Command.SEND_FILE:
 			String fileName = data.msg;
-			String msg = data.sender + ": <a href=\"\" >"+fileName+"</a>";
+			String url = "file://" + fileName;
+			String msg = data.sender + ": <a href='" + url + "'>" + fileName + "</a>";
 			appendMsgArea(msg);
+			break;
+		case Command.GET_FILE:
+			fileName = data.fileName;
+			byte[] fileContent = data.fileContent;	
+			fileChooser = new JFileChooser();
+			fileChooser.setSelectedFile(new File(fileName));
+			int result = fileChooser.showSaveDialog(null);
+			if(result == JFileChooser.APPROVE_OPTION){
+						
+				FileOutputStream fileOut;
+				
+				String path = fileChooser.getCurrentDirectory().toString();			
+				File file = new File(path + "\\" + fileName );
+				System.out.println(file.getAbsolutePath());
+//				fileChooser.setCurrentDirectory(file);
+
+				try {
+					fileOut = new FileOutputStream(path + "\\" + fileName);
+					fileOut.write(fileContent);
+					fileOut.close();
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+
+			}	
 			break;
 		case Command.P_CHAT_REQUEST:
 			String sender = data.sender;
@@ -266,14 +301,14 @@ public class Client extends JFrame implements ActionListener {
 			pClient = new PrivateClient(data.sender, this);
 			break;
 		case Command.P_CHAT_NO:
-			JOptionPane.showMessageDialog(this, data.sender + "dont want to chat private with you!",
-					"Message Dialog", JOptionPane.INFORMATION_MESSAGE);
+			JOptionPane.showMessageDialog(this, data.sender + "dont want to chat private with you!", "Message Dialog",
+					JOptionPane.INFORMATION_MESSAGE);
 			break;
 		case Command.SEND_MESSAGE_P:
-			pClient.msgArea.append(data.sender+": "+data.msg);
+			pClient.msgArea.append(data.sender + ": " + data.msg);
 			break;
 		case Command.SHARE_DESKTOP:
-			if(pClient.confirmDialog(data.sender)){
+			if (pClient.confirmDialog(data.sender)) {
 				SD_Server.go();
 				sendData(new Data(Command.SD_YES, "", txtName.getText(), data.sender));
 			}
@@ -344,17 +379,18 @@ public class Client extends JFrame implements ActionListener {
 		} else if (e.getSource() == btnPrivateChat) {
 			selectedUser = jListUser.getSelectedValue();
 			sendData(new Data(Command.P_CHAT_REQUEST, "", "", selectedUser));
-		} else if(e.getSource() == btnAddFile){
-			JFileChooser fc = new JFileChooser();
-			fc.setDialogTitle("Choose a File");
-			int result = fc.showOpenDialog(null);
-			if(result == JFileChooser.APPROVE_OPTION){
-				File file = fc.getSelectedFile();
-				byte[] buffer = getByteFile(file); //Noi dung file duoc gui
+		} else if (e.getSource() == btnAddFile) {
+			fileChooser = new JFileChooser();
+			fileChooser.setDialogTitle("Choose a File");
+			int result = fileChooser.showOpenDialog(null);
+			if (result == JFileChooser.APPROVE_OPTION) {
+				File file = fileChooser.getSelectedFile();
+				byte[] buffer = getByteFile(file); // Noi dung file duoc gui
 				sendData(new Data(Command.SEND_FILE, file.getName(), buffer));
-				appendMsgArea("Me: " + "<a href=\"\" >"+file.getName()+"</a>");
+				String url = "file://" + file.getName();
+				appendMsgArea("Me: " + "<a href='" + url + "'>" + file.getName() + "</a>");
 			}
-			
+
 		}
 	}
 
@@ -380,21 +416,21 @@ public class Client extends JFrame implements ActionListener {
 		}
 		return b;
 	}
-	
-	public byte[] getByteFile(File file){	
+
+	public byte[] getByteFile(File file) {
 		try {
 			byte[] buffer = new byte[(int) file.length()];
 			DataInputStream din = new DataInputStream(new FileInputStream(file));
 			din.readFully(buffer);
-			
+
 			return buffer;
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
-			e.printStackTrace();	
+			e.printStackTrace();
 		}
 		return null;
 	}
-	
+
 	public void appendMsgArea(String s) {
 		s = "<br>" + s;
 		try {
@@ -403,5 +439,9 @@ public class Client extends JFrame implements ActionListener {
 		} catch (IOException | BadLocationException exc) {
 			exc.printStackTrace();
 		}
+	}
+
+	public void getFilefromServer(String fileName) {
+		sendData(new Data(Command.GET_FILE, fileName, null));
 	}
 }

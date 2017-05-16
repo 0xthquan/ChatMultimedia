@@ -14,6 +14,8 @@ import javax.swing.JButton;
 import java.awt.event.ActionListener;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -139,6 +141,25 @@ public class Server {
 			//System.out.println(name);
 			if(!name.equals(from)) listUser.get(name).sendData(new Data(Command.LOG_OUT,from));
 		}
+	}
+	
+	public byte[] getByteFile(File file) {
+		try {
+			byte[] buffer = new byte[(int) file.length()];
+			DataInputStream din = new DataInputStream(new FileInputStream(file));
+			din.readFully(buffer);
+
+			return buffer;
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		return null;
+	}
+	
+	public void getFile(Data data, String sender){
+		ClientConnect c = listUser.get(sender);
+		c.sendData(data);
 	}
 
 }

@@ -143,4 +143,6 @@ public class PrivateClient extends JFrame implements ActionListener {
 			return false;
 		}
 	}
+	
+	
 }
