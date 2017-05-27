@@ -23,10 +23,12 @@ public class Data implements Serializable {
 		this.receiver = receiver;
 	}
 	
-	public Data(int command, String fileName, byte[] fileContent){
+	public Data(int command, String fileName, byte[] fileContent, String sender, String receiver){
 		this.command = command;
 		this.fileName = fileName;
 		this.fileContent = fileContent;
+		this.sender = sender;
+		this.receiver = receiver;
 	}
 	
 }

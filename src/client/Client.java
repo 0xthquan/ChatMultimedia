@@ -10,6 +10,8 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
+import java.util.Random;
+
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JList;
@@ -20,16 +22,22 @@ import javax.swing.event.HyperlinkListener;
 import javax.swing.text.BadLocationException;
 import javax.swing.text.html.HTMLDocument;
 
+import server.Server;
 import shareDesktop.SD_Client;
 import shareDesktop.SD_Server;
 
 import javax.swing.DefaultListModel;
+import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JEditorPane;
 import javax.swing.JFileChooser;
 import javax.swing.JTextArea;
 import javax.swing.JOptionPane;
 import javax.swing.JScrollPane;
+import java.awt.Toolkit;
+import java.awt.Color;
+import java.awt.SystemColor;
+import java.awt.Font;
 
 public class Client extends JFrame implements ActionListener {
 	/* login */
@@ -37,7 +45,7 @@ public class Client extends JFrame implements ActionListener {
 	private JTextField txtLocalhost;
 	private JTextField textField1;
 	private JTextField txtchatID;
-	private JButton btnOk, btnCancel, btnPrivateChat, btn1, btnAddFile;
+	private JButton btnOk, btnCancel, btnPrivateChat, btnAddFile;
 	/* client */
 	private JFrame frame2;
 	public JTextField txtName;
@@ -51,7 +59,9 @@ public class Client extends JFrame implements ActionListener {
 	private ObjectInputStream fromServer;
 	private DataStream dataStream;
 	private String selectedUser;
-
+	
+	String rgb = "style=\"color: rgb(64,128,255);\"";
+	
 	PrivateClient pClient;
 	JFileChooser fileChooser;
 
@@ -77,7 +87,7 @@ public class Client extends JFrame implements ActionListener {
 	 */
 	private void initialize() {
 		/* Login */
-		frame1 = new JFrame();
+		frame1 = new JFrame("Client Login");
 		frame1.setBounds(100, 100, 269, 211);
 		frame1.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		frame1.getContentPane().setLayout(null);
@@ -126,22 +136,27 @@ public class Client extends JFrame implements ActionListener {
 
 		/* Frame Client */
 		frame2 = new JFrame();
+		frame2.getContentPane().setBackground(new Color(224, 255, 255));
 		frame2.setBounds(100, 100, 600, 450);
 		frame2.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		frame2.getContentPane().setLayout(null);
 
 		JLabel lblName = new JLabel("Name: ");
+		lblName.setFont(new Font("Times New Roman", Font.BOLD, 14));
 		lblName.setBounds(26, 11, 46, 14);
 		frame2.getContentPane().add(lblName);
 
 		txtName = new JTextField();
+		txtName.setFont(new Font(".VnArial", Font.PLAIN, 13));
+		txtName.setForeground(new Color(255, 0, 0));
 		txtName.setEditable(false);
-		txtName.setBounds(67, 8, 280, 20);
+		txtName.setBounds(67, 8, 280, 22);
 		frame2.getContentPane().add(txtName);
 		txtName.setColumns(10);
 
 		JLabel lblOnlineList = new JLabel("Member List");
-		lblOnlineList.setBounds(469, 37, 91, 14);
+		lblOnlineList.setFont(new Font("Times New Roman", Font.BOLD, 14));
+		lblOnlineList.setBounds(455, 37, 91, 14);
 		frame2.getContentPane().add(lblOnlineList);
 
 		btnLogOut = new JButton("Log out");
@@ -157,6 +172,7 @@ public class Client extends JFrame implements ActionListener {
 		frame2.getContentPane().add(btnClear);
 
 		msgSend = new JTextArea();
+		msgSend.setBackground(new Color(255, 255, 255));
 		msgSend.setBounds(26, 337, 384, 50);
 		msgSend.setLineWrap(true);
 		msgSend.setWrapStyleWord(true);
@@ -185,6 +201,7 @@ public class Client extends JFrame implements ActionListener {
 
 		DefaultListModel<String> model = new DefaultListModel<>();
 		jListUser = new JList<String>(model);
+		jListUser.setFont(new Font("Tahoma", Font.PLAIN, 14));
 		jListUser.setBounds(420, 62, 154, 225);
 		frame2.getContentPane().add(jListUser);
 
@@ -192,12 +209,8 @@ public class Client extends JFrame implements ActionListener {
 		scrollPane1.setBounds(420, 62, 154, 225);
 		frame2.getContentPane().add(scrollPane1);
 
-		btn1 = new JButton("New button");
-		btn1.setBounds(87, 298, 40, 28);
-		frame2.getContentPane().add(btn1);
-
 		btnAddFile = new JButton("Add Files");
-		btnAddFile.setBounds(137, 298, 99, 28);
+		btnAddFile.setBounds(126, 298, 118, 28);
 		frame2.getContentPane().add(btnAddFile);
 
 		btnPrivateChat = new JButton("Private Chat");
@@ -208,8 +221,8 @@ public class Client extends JFrame implements ActionListener {
 		btnSend.addActionListener(this);
 		btnClear.addActionListener(this);
 		btnPrivateChat.addActionListener(this);
-		btn1.addActionListener(this);
 		btnAddFile.addActionListener(this);
+		
 	}
 
 	public void go() {
@@ -305,16 +318,24 @@ public class Client extends JFrame implements ActionListener {
 					JOptionPane.INFORMATION_MESSAGE);
 			break;
 		case Command.SEND_MESSAGE_P:
-			pClient.msgArea.append(data.sender + ": " + data.msg);
+			pClient.appendMsgArea(data.sender + ": " + data.msg);
 			break;
 		case Command.SHARE_DESKTOP:
 			if (pClient.confirmDialog(data.sender)) {
-				SD_Server.go();
-				sendData(new Data(Command.SD_YES, "", txtName.getText(), data.sender));
+				int sdSocket = Server.getSocket();
+				SD_Server.go(sdSocket);
+				sendData(new Data(Command.SD_YES, Integer.toString(sdSocket), txtName.getText(), data.sender));
 			}
 			break;
 		case Command.SD_YES:
-			SD_Client sdClient = new SD_Client();
+			int sdSocket = Integer.parseInt(data.msg);
+			SD_Client sdClient = new SD_Client(sdSocket);
+			break;
+		case Command.P_SEND_FILE:
+			fileName = data.msg;
+			url = "file://" + fileName;
+			msg = data.sender + ": <a href='" + url + "'>" + fileName + "</a>";
+			pClient.appendMsgArea(msg);
 			break;
 		default:
 			break;
@@ -362,12 +383,12 @@ public class Client extends JFrame implements ActionListener {
 						"Message Dialog", JOptionPane.WARNING_MESSAGE);
 			}
 		} else if (e.getSource() == btnCancel) {
-			dataStream.stopThread();
 			exit();
+			this.exit();
 		} else if (e.getSource() == btnSend) {
 			if (!msgSend.getText().equals("")) {
 				sendData(new Data(Command.SEND_MESSAGE, msgSend.getText()));
-				appendMsgArea("Me: " + msgSend.getText());
+				appendMsgArea("<b "+rgb+">&lt; Me &gt;</b>: " + msgSend.getText());
 				msgSend.setText("");
 			}
 
@@ -378,17 +399,24 @@ public class Client extends JFrame implements ActionListener {
 			exit();
 		} else if (e.getSource() == btnPrivateChat) {
 			selectedUser = jListUser.getSelectedValue();
-			sendData(new Data(Command.P_CHAT_REQUEST, "", "", selectedUser));
+			if(selectedUser.equals(txtName.getText())){
+				JOptionPane.showMessageDialog(this, "You cant chat with yourself",
+						"Message Dialog", JOptionPane.WARNING_MESSAGE);
+			} else {
+				sendData(new Data(Command.P_CHAT_REQUEST, "", "", selectedUser));
+			}
+			
 		} else if (e.getSource() == btnAddFile) {
 			fileChooser = new JFileChooser();
 			fileChooser.setDialogTitle("Choose a File");
 			int result = fileChooser.showOpenDialog(null);
 			if (result == JFileChooser.APPROVE_OPTION) {
+				
 				File file = fileChooser.getSelectedFile();
 				byte[] buffer = getByteFile(file); // Noi dung file duoc gui
-				sendData(new Data(Command.SEND_FILE, file.getName(), buffer));
+				sendData(new Data(Command.SEND_FILE, file.getName(), buffer, null, null));
 				String url = "file://" + file.getName();
-				appendMsgArea("Me: " + "<a href='" + url + "'>" + file.getName() + "</a>");
+				appendMsgArea("<b "+rgb+">&lt; Me &gt;</b>: " + "<a href='" + url + "'>" + file.getName() + "</a>");
 			}
 
 		}
@@ -417,7 +445,7 @@ public class Client extends JFrame implements ActionListener {
 		return b;
 	}
 
-	public byte[] getByteFile(File file) {
+	public static byte[] getByteFile(File file) {
 		try {
 			byte[] buffer = new byte[(int) file.length()];
 			DataInputStream din = new DataInputStream(new FileInputStream(file));
@@ -442,6 +470,8 @@ public class Client extends JFrame implements ActionListener {
 	}
 
 	public void getFilefromServer(String fileName) {
-		sendData(new Data(Command.GET_FILE, fileName, null));
+		sendData(new Data(Command.GET_FILE, fileName, null, null, null));
 	}
+	
+
 }

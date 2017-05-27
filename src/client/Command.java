@@ -20,4 +20,6 @@ public class Command {
 	public static final int 		SD_YES = 17;
 	public static final int 		SD_NO = 18;
 	public static final int 		GET_FILE = 19;
+	public static final int 		P_SEND_FILE = 20;
+	public static int 		SOCKET = 1080;
 }

@@ -2,24 +2,38 @@ package client;
 
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.io.File;
+import java.io.IOException;
+
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JTextField;
+import javax.swing.JTextPane;
+import javax.swing.event.HyperlinkEvent;
+import javax.swing.event.HyperlinkListener;
+import javax.swing.text.BadLocationException;
+import javax.swing.text.html.HTMLDocument;
 import javax.swing.JButton;
+import javax.swing.JEditorPane;
+import javax.swing.JFileChooser;
 import javax.swing.JTextArea;
 import javax.swing.JOptionPane;
 import javax.swing.JScrollPane;
+import java.awt.SystemColor;
+import java.awt.Color;
+import java.awt.Font;
 
 public class PrivateClient extends JFrame implements ActionListener {
-	private JButton btn1, btnFile, btnShareDesktop;
+	private JButton btnAddFile, btnShareDesktop;
 	/* client */
 	public JFrame frame;
 	private JTextField textField;
 	private JButton btnLogOut, btnSend, btnClear;
-	public JTextArea msgSend, msgArea;
-
+	public JTextArea msgSend;
+	public JTextPane msgArea;
+	private JFileChooser fileChooser;
 	private Client client;
-
+	String rgb = "style=\"color: rgb(64,128,255);\"";
 	private String pUser;
 
 	public PrivateClient(String pUser, Client client) {
@@ -37,11 +51,13 @@ public class PrivateClient extends JFrame implements ActionListener {
 
 		/* Frame Private Client */
 		frame = new JFrame();
+		frame.getContentPane().setBackground(new Color(102, 102, 102));
 		frame.setBounds(100, 100, 600, 450);
 		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		frame.getContentPane().setLayout(null);
 
 		JLabel lblName = new JLabel("Name: ");
+		lblName.setForeground(new Color(255, 255, 255));
 		lblName.setBounds(26, 11, 46, 14);
 		frame.getContentPane().add(lblName);
 
@@ -69,35 +85,45 @@ public class PrivateClient extends JFrame implements ActionListener {
 		msgSend.setWrapStyleWord(true);
 		frame.getContentPane().add(msgSend);
 
-		msgArea = new JTextArea();
-		msgArea.setBounds(26, 62, 545, 225);
-		msgArea.setLineWrap(true);
-		msgArea.setWrapStyleWord(true);
+		msgArea = new JTextPane();
+		msgArea.setFont(new Font("Times New Roman", Font.PLAIN, 18));
+		msgArea.setBounds(26, 62, 384, 225);
 		msgArea.setEditable(false);
 		frame.getContentPane().add(msgArea);
+		// msgArea.setContentType("text/html");
+		msgArea.setEditorKit(JEditorPane.createEditorKitForContentType("text/html"));
+
+		msgArea.addHyperlinkListener(new HyperlinkListener() {
+			@Override
+			public void hyperlinkUpdate(HyperlinkEvent e) {
+				if (e.getEventType() == HyperlinkEvent.EventType.ACTIVATED) {
+					String fileName = e.getURL().toString().substring(7);
+					getFilefromServer(fileName);
+				}
+			}
+		});
 
 		JScrollPane scrollPane = new JScrollPane(msgArea);
 		scrollPane.setBounds(26, 62, 545, 225);
 		frame.getContentPane().add(scrollPane);
 
-		btn1 = new JButton("New button");
-		btn1.setBounds(80, 298, 40, 28);
-		frame.getContentPane().add(btn1);
-
-		btnFile = new JButton("Add Files");
-		btnFile.setBounds(148, 298, 83, 28);
-		frame.getContentPane().add(btnFile);
+		btnAddFile = new JButton("Add Files");
+		btnAddFile.setBounds(127, 298, 104, 28);
+		frame.getContentPane().add(btnAddFile);
 
 		btnShareDesktop = new JButton("Share Desktop");
-		btnShareDesktop.setBounds(263, 298, 116, 28);
+		btnShareDesktop.setBounds(254, 298, 134, 28);
 		frame.getContentPane().add(btnShareDesktop);
 
 		btnLogOut.addActionListener(this);
 		btnSend.addActionListener(this);
 		btnClear.addActionListener(this);
-		btn1.addActionListener(this);
-		btnFile.addActionListener(this);
+		btnAddFile.addActionListener(this);
 		btnShareDesktop.addActionListener(this);
+	}
+
+	protected void getFilefromServer(String fileName) {
+		client.sendData(new Data(Command.GET_FILE, fileName, null, null, null));
 	}
 
 	public void processData(Data data) {
@@ -122,7 +148,7 @@ public class PrivateClient extends JFrame implements ActionListener {
 			if (!msgSend.getText().equals("")) {
 				client.sendData(
 						new Data(Command.SEND_MESSAGE_P, msgSend.getText() + "\n", client.txtName.getText(), pUser));
-				msgArea.append("Me: " + msgSend.getText() + "\n");
+				appendMsgArea("<b "+rgb+">&lt; Me &gt;</b>: " + msgSend.getText() + "\n");
 				msgSend.setText("");
 			}
 		} else if (e.getSource() == btnClear) {
@@ -131,6 +157,17 @@ public class PrivateClient extends JFrame implements ActionListener {
 			client.sendData(new Data(Command.SHARE_DESKTOP, "", client.txtName.getText(), pUser));
 		} else if (e.getSource() == btnLogOut) {
 			exit();
+		} else if (e.getSource() == btnAddFile){
+			fileChooser = new JFileChooser();
+			fileChooser.setDialogTitle("Choose a File");
+			int result = fileChooser.showOpenDialog(null);
+			if (result == JFileChooser.APPROVE_OPTION) {
+				File file = fileChooser.getSelectedFile();
+				byte[] buffer = Client.getByteFile(file); // Noi dung file duoc gui
+				client.sendData(new Data(Command.P_SEND_FILE, file.getName(), buffer, client.txtName.getText(), pUser));
+				String url = "file://" + file.getName();
+				appendMsgArea("<b "+rgb+">&lt; Me &gt;</b>: " + "<a href='" + url + "'>" + file.getName() + "</a>");
+			}
 		}
 	}
 	
@@ -141,6 +178,16 @@ public class PrivateClient extends JFrame implements ActionListener {
 			return true;
 		} else {
 			return false;
+		}
+	}
+	
+	public void appendMsgArea(String s) {
+		s = "<br>" + s;
+		try {
+			HTMLDocument doc = (HTMLDocument) msgArea.getStyledDocument();
+			doc.insertAfterEnd(doc.getCharacterElement(doc.getLength()), s);
+		} catch (IOException | BadLocationException exc) {
+			exc.printStackTrace();
 		}
 	}
 	

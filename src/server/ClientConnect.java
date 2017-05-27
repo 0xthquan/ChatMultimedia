@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
+import java.util.Random;
 
 import javax.net.ssl.SSLEngineResult.Status;
 import javax.swing.plaf.metal.MetalIconFactory.FolderIcon16;
@@ -21,6 +22,7 @@ public class ClientConnect extends Thread {
 	private ObjectInputStream fromClient;
 	private boolean run;
 	private String user;
+	String rgb = randColor();
 
 	public ClientConnect(Server server, Socket s) {
 		this.server = server;
@@ -51,7 +53,7 @@ public class ClientConnect extends Thread {
 			checkUser(user);
 			break;
 		case Command.SEND_MESSAGE:
-			server.sendAll(Command.SEND_MESSAGE,user, user + ": " + data.msg);
+			server.sendAll(Command.SEND_MESSAGE,user, "<b "+rgb+">&lt; "+ user + " &gt;</b>: " + ": " + data.msg);
 			break;
 		case Command.EXIT:
 			run = false;
@@ -70,13 +72,13 @@ public class ClientConnect extends Thread {
 				e.printStackTrace();
 			}
 			
-			server.sendAll(Command.SEND_FILE, user, fileName);
+			server.sendAll(Command.SEND_FILE, "<b "+rgb+">&lt; "+ user + " &gt;</b>: ", fileName);
 			
 			break;
 		case Command.GET_FILE:
 			fileName = data.fileName;
 			fileContent = server.getByteFile(new File(server.folderStoreFilePath + "\\" + fileName));
-			server.getFile(new Data(Command.GET_FILE, fileName, fileContent), this.user);	
+			server.getFile(new Data(Command.GET_FILE, fileName, fileContent, null, null), this.user);	
 			break;
 		case Command.PRIVATE_CHAT:
 
@@ -91,13 +93,28 @@ public class ClientConnect extends Thread {
 			server.sendPrivate(new Data(Command.P_CHAT_NO, "", this.user, data.receiver));
 			break;
 		case Command.SEND_MESSAGE_P:
-			server.sendPrivate(new Data(Command.SEND_MESSAGE_P, data.msg, data.sender, data.receiver));
+			server.sendPrivate(new Data(Command.SEND_MESSAGE_P, data.msg, "<b "+rgb+">&lt; "+ data.sender + " &gt;</b> ", data.receiver));
 			break;
 		case Command.SHARE_DESKTOP:
 			server.sendPrivate(new Data(Command.SHARE_DESKTOP, "", data.sender, data.receiver));
 			break;
 		case Command.SD_YES:
-			server.sendPrivate(new Data(Command.SD_YES, "", data.sender, data.receiver));
+			server.sendPrivate(new Data(Command.SD_YES, data.msg, data.sender, data.receiver));
+			break;
+		case Command.P_SEND_FILE:
+			fileName = data.fileName;
+			fileContent = data.fileContent;
+			try {
+				fileOut = new FileOutputStream(server.folderStoreFilePath + "\\" + fileName);
+				fileOut.write(fileContent);
+				fileOut.close();
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			
+			server.sendPrivate(new Data(Command.P_SEND_FILE, fileName, "<b "+rgb+">&lt; "+ data.sender + " &gt;</b> ", data.receiver));
+			
 			break;
 		default:
 			break;
@@ -153,7 +170,7 @@ public class ClientConnect extends Thread {
 			server.listUser.remove(user);
 			server.deleteUser(user);
 			server.statusArea.append(user + " Logged out!\n");
-			server.sendAll(Command.SEND_MESSAGE,user, user + " Logged out!\n");
+			server.sendAll(Command.SEND_MESSAGE,user, "<b "+rgb+">&lt; "+ user + " &gt;</b> " + " Logged out!\n");
 			toClient.close();
 			fromClient.close();
 			s.close();
@@ -168,5 +185,17 @@ public class ClientConnect extends Thread {
 		sendData(new Data(Command.LIST_USER, name));
 	}
 	
-	
+	public static String randColor() {
+        try {
+            Random rn = new Random();
+            int range = 255 - 0 + 1;
+            int randomNum1 = 0 + rn.nextInt(range);
+            int randomNum2 = 0 + rn.nextInt(range);
+            String rgb = "style=\"color: rgb(43," +randomNum1+","+randomNum2+");\"";
+            return rgb;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
 }
