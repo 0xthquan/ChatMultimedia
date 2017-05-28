@@ -53,7 +53,7 @@ public class ClientConnect extends Thread {
 			checkUser(user);
 			break;
 		case Command.SEND_MESSAGE:
-			server.sendAll(Command.SEND_MESSAGE,user, "<b "+rgb+">&lt; "+ user + " &gt;</b>: " + ": " + data.msg);
+			server.sendAll(Command.SEND_MESSAGE, user, "<b "+rgb+">&lt; "+ user + " &gt;</b>: " + ": " + data.msg);
 			break;
 		case Command.EXIT:
 			run = false;
@@ -72,7 +72,7 @@ public class ClientConnect extends Thread {
 				e.printStackTrace();
 			}
 			
-			server.sendAll(Command.SEND_FILE, "<b "+rgb+">&lt; "+ user + " &gt;</b>: ", fileName);
+			server.sendAll(Command.SEND_FILE, user, fileName);
 			
 			break;
 		case Command.GET_FILE:

@@ -147,7 +147,7 @@ public class Client extends JFrame implements ActionListener {
 		frame2.getContentPane().add(lblName);
 
 		txtName = new JTextField();
-		txtName.setFont(new Font(".VnArial", Font.PLAIN, 13));
+		txtName.setFont(new Font("Arial", Font.BOLD | Font.ITALIC, 13));
 		txtName.setForeground(new Color(255, 0, 0));
 		txtName.setEditable(false);
 		txtName.setBounds(67, 8, 280, 22);
@@ -201,7 +201,7 @@ public class Client extends JFrame implements ActionListener {
 
 		DefaultListModel<String> model = new DefaultListModel<>();
 		jListUser = new JList<String>(model);
-		jListUser.setFont(new Font("Tahoma", Font.PLAIN, 14));
+		jListUser.setFont(new Font("Tahoma", Font.BOLD, 14));
 		jListUser.setBounds(420, 62, 154, 225);
 		frame2.getContentPane().add(jListUser);
 
@@ -268,7 +268,7 @@ public class Client extends JFrame implements ActionListener {
 		case Command.SEND_FILE:
 			String fileName = data.msg;
 			String url = "file://" + fileName;
-			String msg = data.sender + ": <a href='" + url + "'>" + fileName + "</a>";
+			String msg = "<b "+rgb+">&lt; "+ data.sender + " &gt;</b>: "  + " <a href='" + url + "'>" + fileName + "</a>";
 			appendMsgArea(msg);
 			break;
 		case Command.GET_FILE:
